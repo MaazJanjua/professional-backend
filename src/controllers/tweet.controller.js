@@ -98,8 +98,11 @@ const deleteTweets = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, tweet, 'tweet deleted successfully'))
-        
+
 })
+const deleteTweets1 = asyncHandler(async (req, res) => {
+    //just for checking 
+ })
 
 export {
     createTweet,
