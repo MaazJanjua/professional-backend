@@ -18,7 +18,8 @@ export {
     getPaymentByOrderId,
     getUserPayments,
     getpaymentById,
-    updatePaymentStatus,
+    updatePaymentStatus, 
     confirmCODPayment,
     refundPayment
 }
+// 8 controllers functions for payment management

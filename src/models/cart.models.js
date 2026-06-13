@@ -14,7 +14,7 @@ const cartSchema = new Schema({
                 ref: "Product",
                 required: true
             },
-            quantity: {
+            quantity: { 
                 type: Number,
                 required: true,
                 default: 1,

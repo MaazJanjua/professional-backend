@@ -24,7 +24,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
 })
 const updateOrderStatus = asyncHandler(async (req, res) => {
     //👉 pending → confirmed → shipped → delivered
-})
+}) 
 const updatePaymentStatus = asyncHandler(async (req, res) => {
     //     👉 payment success/fail update
     // 👉 payment gateway integration
@@ -45,5 +45,7 @@ export {
     updateOrderStatus,
     updatePaymentStatus,
     getAllOrders,
-    deleteOrder
+    deleteOrder 
 }
+
+// 8 controllers functions for order management

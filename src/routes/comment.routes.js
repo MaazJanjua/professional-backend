@@ -8,7 +8,7 @@ import {
 
 import { commentLimiter } from '../middlewares/rateLimiter.middleware.js'
 import { verifyJWT } from '../middlewares/auth.middleware.js';
-const router = Router();
+const router = Router(); 
 router.use(verifyJWT);//apply veriftJWT middleware to all routes in this file
 
 router.route('/:videoId')

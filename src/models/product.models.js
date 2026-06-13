@@ -1,6 +1,11 @@
 import mongoose, { Schema } from 'mongoose'
 
 const productSchema = new Schema({
+    owner: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
     title: {
         type: String,
         required: true,
@@ -48,7 +53,7 @@ const productSchema = new Schema({
     },
 
     averageRating: {
-        type: Number, 
+        type: Number,
         default: 0
     },
     numReviews: {
