@@ -5,17 +5,19 @@ import {
     updateComment,
     deleteComment
 } from '../controllers/comment.controller.js';
+
+import { commentLimiter } from '../middlewares/rateLimiter.middleware.js'
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 const router = Router();
 router.use(verifyJWT);//apply veriftJWT middleware to all routes in this file
 
 router.route('/:videoId')
-    .get(getVideoComments)
-    .post(addComment);
+    .get(commentLimiter, getVideoComments)
+    .post(commentLimiter, addComment);
 
 router.route("/:commentId")
-    .delete(deleteComment)
-    .patch(updateComment)
+    .delete(commentLimiter, deleteComment)
+    .patch(commentLimiter, updateComment)
 
 
 export default router;

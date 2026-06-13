@@ -5,15 +5,15 @@ import mongoose, { Schema } from "mongoose";
 const playlistSchema = new Schema({
     name: { 
         type: String,
-        required: [true, 'name is required in playlistSchema']
+        required: [true, 'name is required in playlistSchema'] 
     },
     description: {
         type: String,
         required: [true,'description is required in playlistSchema']
     },
     videos: [
-        {
-            type: Schema.Types.ObjectId,
+        { 
+            type: Schema.Types.ObjectId, 
             ref: "Video"
         }
     ],

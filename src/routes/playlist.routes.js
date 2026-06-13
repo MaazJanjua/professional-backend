@@ -5,7 +5,7 @@ import {
     getPlaylistById,
     addVideoToPlaylist,
     removeVideoFormPlaylist,
-    deletePlaylist,
+    deletePlaylist, 
     updatePlaylist
 } from '../controllers/playlist.controller.js';
 
@@ -14,7 +14,7 @@ import verifyJWT from '../middlewares/auth.middleware.js';
 const router = Router();
 router.use(verifyJWT);
 
-router.route("/").post(createPlatlist);
+router.route("/").post(createPlatlist); 
 router.route("/:playlistId")
     .get(getPlaylistById)
     .patch(updatePlaylist)

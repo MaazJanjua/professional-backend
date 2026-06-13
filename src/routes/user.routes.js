@@ -16,6 +16,8 @@ import {
     getUserWatchHistory
 } from "../controllers/user.controller.js";
 
+import { loginLimiter } from '../middlewares/rateLimiter.middleware.js'
+
 // Multer middleware for handling file uploads
 import upload from '../middlewares/multer.middleware.js'
 
@@ -23,7 +25,7 @@ import upload from '../middlewares/multer.middleware.js'
 import verifyJWT from '../middlewares/auth.middleware.js'
 
 // Cloudinary utility function
-import {uploadOnCloudinary} from "../utils/cloudinary.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 // Create router instance
 const router = Router();
@@ -53,7 +55,7 @@ router.route('/register').post(
 )
 
 // Login Route
-router.route('/login').post(loginUser)
+router.route('/login').post(loginLimiter, loginUser)
 
 // =========================
 // Secured Routes
