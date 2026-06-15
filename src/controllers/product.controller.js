@@ -4,7 +4,9 @@ import asyncHandler from '../utils/asyncHandler.js'
 import apiError from '../utils/apiError.js';
 import apiResponse from '../utils/apiResponse.js';
 import Product from '../models/product.models.js';
+import Review from '../models/reviews.models.js';
 
+//update required product images 
 const createProduct = asyncHandler(async (req, res) => {
     const userId = req.user._id; // Assuming req.user is set by auth middleware
     const { title, description, price, category, stock } = req.body;
@@ -57,7 +59,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
         filter.category = category
     }
 
-    if (search) {
+    if (search?.trim()) {
         filter.title = { $regex: search, $options: 'i' }
     }
 
@@ -97,15 +99,237 @@ const getProductBySlug = asyncHandler(async (req, res) => {
 })
 
 const getProductById = asyncHandler(async (req, res) => {
+    const { productId } = req.params
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, "Invalid product ID")
+    }
+    const product = await Product.findById(productId)
+    if (!product) {
+        throw new apiError(404, 'product not found ')
+    }
+    return res
+        .status(200)
+        .json(new apiResponse(200, product, 'product fetched by productId successfully'))
+})
+
+
+//update required product images 
+const updateProduct = asyncHandler(async (req, res) => {
+    if (!req.user?._id) {
+        throw new apiError(401, "Unauthorized")
+    }
+
+    const { productId } = req.params
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, "Invalid product ID")
+    }
+
+    const { title, description, price, category, stock } = req.body
+
+    const updateData = {}
+
+    if (title) updateData.title = title.trim();
+    if (description) updateData.description = description.trim()
+    if (category) updateData.category = category.trim()
+    if (price != null) updateData.price = price;
+    if (stock != null) updateData.stock = stock;
+
+    if (title) {
+        updateData.slug = slugify(title, { lower: true }) + "-" + productId;
+    }
+
+    // if (!title?.trim() || !description?.trim() || !category?.trim() || price == null || stock == null) {
+    //     throw new apiError(400, "All fields (title, description, price, category, stock) are required")
+    // }
+
+    // if (price < 0 || stock < 0) {
+    //     throw new apiError(400, "Price and stock cannot be negative")
+    // }
+
+    const product = await Product.findOneAndUpdate({
+        _id: productId,
+        owner: req.user._id
+    },
+        updateData,
+        {
+            new: true,
+            runValidators: true
+        }
+    )
+
+    if (!product) {
+        throw new apiError(404, 'Product not found')
+    }
+    return res
+        .status(200)
+        .json(new apiResponse(200, { updatedProduct: product }, 'Product updated successfully'))
+})
+
+
+//update required product images 
+const deleteProduct = asyncHandler(async (req, res) => {
+    const { productId } = req.params
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, 'invalid productId')
+    }
+    const product = await Product.findOneAndDelete({
+        _id: productId,
+        owner: req.user._id
+    })
+    if (!req.user?._id) {
+        throw new apiError(401, "Unauthorized")
+    }
+    if (!product) {
+        throw new apiError(404, 'product not found')
+    }
+    return res
+        .status(200)
+        .json(new apiResponse(200, {
+            deletedProduct: product._id
+        }, 'Product deleted successfully'))
+})
+
+const updateProductStock = asyncHandler(async (req, res) => {
+    const { productId } = req.params
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, 'invalid productId')
+    }
+    const { stock } = req.body
+    if (stock == null || isNaN(stock) || stock < 0) {
+        throw new apiError(400, 'Invalid stock value')
+    }
+    const product = await Product.findOneAndUpdate(
+        {
+            _id: productId,
+            owner: req.user._id
+        },
+        {
+            stock
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    )
+    if (!product) {
+        throw new apiError(404, 'product is missing')
+    }
+    return res
+        .status(200)
+        .json(new apiResponse(200, product, 'product stock updated successfully'))
 
 })
-const updateProduct = asyncHandler(async (req, res) => { })
-const deleteProduct = asyncHandler(async (req, res) => { })
-const updateProductStock = asyncHandler(async (req, res) => { })
-const addProductReview = asyncHandler(async (req, res) => { })
-const getProductReviews = asyncHandler(async (req, res) => { })
-const searchProducts = asyncHandler(async (req, res) => { })
-const filterProducts = asyncHandler(async (req, res) => { })
+
+const addProductReview = asyncHandler(async (req, res) => {
+    if (!req.user?._id) {
+        throw new apiError(401, "Unauthorized")
+    }
+    const { productId } = req.params
+    const { rating, comment } = req.body
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, 'invalid productId')
+    }
+
+    const product = await Product.findById(productId);
+
+    if (!product) {
+        throw new apiError(404, "Product not found")
+    }
+
+
+    if (!comment?.trim() || isNaN(rating) || rating == null || rating < 1 || rating > 5) {
+        throw new apiError(400, 'Invalid rating. Please provide a rating between 1 and 5. Also, comment is required.')
+    }
+
+    const review = await Review.create({
+        product: productId,
+        user: req.user._id,
+        rating,
+        comment: comment.trim()
+    })
+    if (!review) {
+        throw new apiError(500, 'Failed to add review')
+    }
+
+    return res
+        .status(201)
+        .json(new apiResponse(201, { review }, 'review added successfully'))
+})
+const getProductReviews = asyncHandler(async (req, res) => {
+    const { productId } = req.params
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, 'productId is invalid')
+    }
+    const product = await Product.findById(productId)
+    if (!product) {
+        throw new apiError(404, 'product not found')
+    }
+    const review = await Review.findOne({
+        product: productId
+    }).populate("user", "name avatar")
+
+    return res
+        .status(200)
+        .json(
+            new apiResponse(
+                200,
+                { reviews },
+                "Reviews fetched successfully"
+            )
+        )
+
+})
+const searchProducts = asyncHandler(async (req, res) => {
+    const { query } = req.params
+    if (!query?.trim()) {
+        throw new apiError(400, 'Search query is required')
+    }
+    const products = await Product.find({
+        $or: [
+            {
+                title: {
+                    $regex: query,
+                    $options: 'i'
+                }
+            },
+            {
+                description: {
+                    $regex: query,
+                    $options: 'i'
+                }
+            },
+            {
+                category: {
+                    $regex: query,
+                    $options: 'i'
+                }
+            }
+        ]
+    })
+    return res
+        .status(200)
+        .json(new apiResponse(200, product, 'product searched succesfully'))
+})
+
+const filterProducts = asyncHandler(async (req, res) => {
+    const { category, minPrice, maxPrice } = req.query
+    let filter = {}
+    if (category) {
+        filter.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+        filter.price = {};
+        if (minPrice) filter.price.$gte = Number(minPrice)
+        if (maxPrice) filter.price.$lte = Number(maxPrice)
+    }
+    const product = await Product.find(filter)
+    return res.status(200).json(
+        new apiResponse(200, { products }, "Products filtered successfully")
+    );
+})
 
 export {
     createProduct, // protected

@@ -6,7 +6,7 @@ const orderSchema = new Schema({
         required: true
     },
     orderNumber: {
-        type: String,
+        type: String, 
         unique: true
     },
 
