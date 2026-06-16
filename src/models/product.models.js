@@ -22,7 +22,7 @@ const productSchema = new Schema({
         trim: true
     },
     price: {
-        type: Number,
+        type: Number, 
         required: true,
         min: 0
     },
@@ -42,8 +42,9 @@ const productSchema = new Schema({
         }
     ],
     category: {
-        type: Schema.Types.ObjectId,
-        ref: "Category",
+        // type: Schema.Types.ObjectId,
+        // ref: "Category",
+        type:String,
         required: true
     },
     //if store is like marlet place | if your own store then you can remove it

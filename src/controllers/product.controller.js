@@ -6,7 +6,7 @@ import apiResponse from '../utils/apiResponse.js';
 import Product from '../models/product.models.js';
 import Review from '../models/reviews.models.js';
 
-//update required product images 
+//update required product images  
 const createProduct = asyncHandler(async (req, res) => {
     const userId = req.user._id; // Assuming req.user is set by auth middleware
     const { title, description, price, category, stock } = req.body;
@@ -190,15 +190,21 @@ const deleteProduct = asyncHandler(async (req, res) => {
         }, 'Product deleted successfully'))
 })
 
+
+
 const updateProductStock = asyncHandler(async (req, res) => {
     const { productId } = req.params
+
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         throw new apiError(400, 'invalid productId')
     }
+
     const { stock } = req.body
+
     if (stock == null || isNaN(stock) || stock < 0) {
         throw new apiError(400, 'Invalid stock value')
     }
+
     const product = await Product.findOneAndUpdate(
         {
             _id: productId,
@@ -220,6 +226,7 @@ const updateProductStock = asyncHandler(async (req, res) => {
         .json(new apiResponse(200, product, 'product stock updated successfully'))
 
 })
+
 
 const addProductReview = asyncHandler(async (req, res) => {
     if (!req.user?._id) {
@@ -257,16 +264,23 @@ const addProductReview = asyncHandler(async (req, res) => {
         .status(201)
         .json(new apiResponse(201, { review }, 'review added successfully'))
 })
+
+
+
 const getProductReviews = asyncHandler(async (req, res) => {
     const { productId } = req.params
+
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         throw new apiError(400, 'productId is invalid')
     }
+
     const product = await Product.findById(productId)
+
     if (!product) {
         throw new apiError(404, 'product not found')
     }
-    const review = await Review.findOne({
+
+    const reviews = await Review.find({
         product: productId
     }).populate("user", "name avatar")
 
@@ -276,11 +290,16 @@ const getProductReviews = asyncHandler(async (req, res) => {
             new apiResponse(
                 200,
                 { reviews },
-                "Reviews fetched successfully"
+                "All Reviews fetched successfully"
             )
         )
 
 })
+
+
+
+
+
 const searchProducts = asyncHandler(async (req, res) => {
     const { query } = req.params
     if (!query?.trim()) {
@@ -310,8 +329,14 @@ const searchProducts = asyncHandler(async (req, res) => {
     })
     return res
         .status(200)
-        .json(new apiResponse(200, product, 'product searched succesfully'))
+        .json(new apiResponse(200, products, 'product searched succesfully'))
 })
+
+
+
+
+
+
 
 const filterProducts = asyncHandler(async (req, res) => {
     const { category, minPrice, maxPrice } = req.query
@@ -325,7 +350,7 @@ const filterProducts = asyncHandler(async (req, res) => {
         if (minPrice) filter.price.$gte = Number(minPrice)
         if (maxPrice) filter.price.$lte = Number(maxPrice)
     }
-    const product = await Product.find(filter)
+    const products = await Product.find(filter)
     return res.status(200).json(
         new apiResponse(200, { products }, "Products filtered successfully")
     );

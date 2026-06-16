@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import config from './config/config.js';
 
+
 const app = express();
 
 app.use(cors({
@@ -17,8 +18,10 @@ app.use(cookieParser());
 
 //routesv imports
 import userRouter from './routes/user.routes.js'
+import productRouter from './routes/product.routes.js'
 
 app.use('/api/v1/users', userRouter)
+app.use('/api/v1/users', productRouter)
 
 app.get('/', (req, res) => {
     res.send('Hello World!')

@@ -7,6 +7,7 @@ import {
     updateOrderStatus,
     updatePaymentStatus,
     getAllOrders,
+    getAllMyOrders,
     deleteOrder
 } from '../controllers/order.controller.js';
 
@@ -14,12 +15,13 @@ import { verifyJWT } from '../middlewares/auth.middleware.js';
 const router = Router();
 router.use(verifyJWT);//apply veriftJWT middleware to all routes in this file
 
-router.route('/') 
+router.route('/')
     .post(createOrder)
     .get(getAllOrders);
 
 router.route('/my-orders')
-    .get(getUserOrders);
+    .get(getUserOrders)
+    .get(getAllMyOrders)
 
 router.route('/:orderId')
     .get(getOrderById)

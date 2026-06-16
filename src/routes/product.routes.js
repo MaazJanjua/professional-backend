@@ -6,11 +6,11 @@ import {
     getProductById,
     updateProduct,
     deleteProduct,
-    updateProductStock,
+    updateProductStock, 
     addProductReview, 
     getProductReviews,
     searchProducts,
-    filterProducts
+    filterProducts 
 } from '../controllers/product.controller.js'
 
 import verifyJWT from '../middlewares/auth.middleware.js'
@@ -18,18 +18,18 @@ const router = Router();
  
 // PUBLIC
 router.route('/').get(getAllProducts)
-router.route('/search').get(searchProducts)
+router.route('/search/:query').get(searchProducts)
 router.route("/filter").get(filterProducts)
 router.route("/slug/:slug").get(getProductBySlug)
-router.route("/:id").get(getProductById)
+router.route("/:productId").get(getProductById)
 
 //REVIEWS
-router.route('/:id/reviews').post(verifyJWT, addProductReview).get(getProductReviews)
+router.route('/:productId/reviews').post(verifyJWT, addProductReview).get(getProductReviews)
 
 //PROTECTED (ADMIN) ROUTES
 router.route('/').post(verifyJWT, createProduct)
-router.route('/:id').put(verifyJWT, updateProduct)
-router.route('/:id').delete(verifyJWT, deleteProduct)
-router.route('/:id/stock').put(verifyJWT, updateProductStock)
+router.route('/:productId').put(verifyJWT, updateProduct)
+router.route('/:productId').delete(verifyJWT, deleteProduct)
+router.route('/:productId/stock').put(verifyJWT, updateProductStock)
 
 export default router;
