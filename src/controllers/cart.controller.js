@@ -11,6 +11,9 @@ const addToCart = asyncHandler(async (req, res) => {
 
     // Product ID URL params se le rahe hain
     const { productId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, "Invalid productId")
+    }
 
     // Logged-in user ki ID
     const userId = req.user._id;
@@ -21,7 +24,6 @@ const addToCart = asyncHandler(async (req, res) => {
     const cart = await Cart.findOneAndUpdate(
         {
             owner: userId,
-
             // Cart ke items array mein product search karna
             "items.product": productId
         },
@@ -84,20 +86,18 @@ const addToCart = asyncHandler(async (req, res) => {
             "product added"
         )
     )
-
-
 })
 
-const getCart = asyncHandler((req, res) => {
+const getCart = asyncHandler(async (req, res) => {
     //     👉 User ka current cart fetch karega
     // 👉 products populate ke sath 
     const userId = req.user._id
 
-    const cart = await Cart.findOne({
+    const getCart = await Cart.findOne({
         owner: userId
     }).populate('owner', 'items.product')
 
-    if (!cart) {
+    if (!getCart) {
         throw new apiError(404, 'cart not found')
     }
 
@@ -106,81 +106,141 @@ const getCart = asyncHandler((req, res) => {
         .json(
             new apiResponse(
                 200,
-                cart,
+                getCart,
                 "Cart fetched successfully"
             )
         );
 })
 
+// const removeFromCart = asyncHandler(async (req, res) => {
+//     const { productId } = req.params
+//     if (!mongoose.Types.ObjectId.isValid(productId)) {
+//         throw new apiError(400, 'invalid productId')
+//     }
+//     const cart = await Cart.findOneAndUpdate(
+//         {
+//             owner: req.user._id
+//         },
+//         {
+//             $pull: {
+//                 items: {
+//                     product: productId
+//                 }
+//             }
+//         },
+//         {
+//             new: true
+//         }
+//     )
+//     if (!cart) {
+//         throw new apiError(404, 'cart not found')
+//     }
+//     return res
+//         .status(200)
+//         .json(
+//             new apiResponse(200, cart, 'item deleted successfully from cart')
+//         )
+// })
+
 const removeFromCart = asyncHandler(async (req, res) => {
-    // 👉 specific product cart se remove
-    const { productId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new apiError(400, 'invalid productId')
-    }
-    const cart = await Cart.findOneAndUpdate(
-        {
-            owner: req.user._id
-        },
-        {
-            $pull: {
-                items: {
-                    product: productId
-                }
-            }
-        },
-        {
-            new: true
-        }
-    )
-    if (!cart) {
-        throw new apiError(404, 'cart not found')
-    }
-    return res
-        .status(200)
-        .json(
-            new apiResponse(200, cart, 'item deleted successfully from cart')
-        )
-})
-
-const updateCartItemQuantity = asyncHandler((req, res) => {
-    // 👉 product quantity change (increase / decrease)
-
-
-    // product quantity change (increase / decrease)
-
     const { productId } = req.params;
 
-    const { action } = req.body;
-    // action: "increase" ya "decrease"
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new apiError(400, 'invalid productId');
+    }
 
+    const cart = await Cart.findOne({ owner: req.user._id });
+
+    if (!cart) {
+        throw new apiError(404, 'cart not found');
+    }
+
+    const item = cart.items.find(
+        i => i.product.toString() === productId
+    );
+
+    if (!item) {
+        throw new apiError(404, 'item not found in cart');
+    }
+
+    let message;
+
+    if (item.quantity > 1) {
+        item.quantity -= 1;
+        message = "1 item removed from cart";
+    } else {
+        cart.items = cart.items.filter(
+            i => i.product.toString() !== productId
+        );
+        message = "All items removed  from cart";
+    }
+
+    await cart.save();
+
+    return res.status(200).json(
+        new apiResponse(200, cart, message)
+    );
+});
+
+const updateCartItemQuantity = asyncHandler(async (req, res) => {
+
+    const { productId } = req.params;
+    const { action } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         throw new apiError(400, 'productId invalid')
     }
 
-    if (!["icrease", "decrease"].includes(action)) {
+    if (!["increase", "decrease"].includes(action)) {
         throw new apiError(400, 'invalid action')
     }
 
-    const quantityChange = action === 'increase' ? 1 : -1;
 
-    findOneAndUpdate(
-        {
-            owner: req.user._id,
-            "items.product": productId
-        },
-        {
-            $inc: {
-                "items.$.quantity": quantityChange
-            }
-        },
-        { new: true }
-    )
+    const cart = await Cart.findOne({
+        owner: req.user._id
+    });
+
 
     if (!cart) {
+        throw new apiError(404, "cart not found");
+    }
+
+
+    const item = cart.items.find(
+        item => item.product.toString() === productId
+    );
+
+
+    if (!item) {
         throw new apiError(404, "product not found in cart");
     }
+
+
+
+    // decrease and quantity is 1
+    if (item.quantity === 1 && action === "decrease") {
+
+        cart.items = cart.items.filter(
+            item => item.product.toString() !== productId
+        );
+
+    }
+
+    // normal increase/decrease
+    else {
+
+        if (action === "increase") {
+            item.quantity += 1;
+        }
+
+        if (action === "decrease") {
+            item.quantity -= 1;
+        }
+
+    }
+
+
+    await cart.save();
 
 
     return res
@@ -193,11 +253,11 @@ const updateCartItemQuantity = asyncHandler((req, res) => {
             )
         );
 
-})
+});
 
-const clearCart = asyncHandler((req, res) => {
+const clearCart = asyncHandler(async (req, res) => {
     // poora cart empty
-    const { userId } = req.user._id;
+    const userId = req.user._id;
     const cart = await Cart.findOneAndUpdate(
         {
             owner: userId
@@ -228,51 +288,72 @@ const clearCart = asyncHandler((req, res) => {
 
 const syncCart = asyncHandler(async (req, res) => {
 
-    // 👉 Sync guest cart with DB cart using atomic bulk operations
-    const { items } = req.body
+    const { items } = req.body;
 
-    const bulkOps = items.map((item) => {
-        return {
-            updateOne: {
-                filter: {
-                    owner: req.user._id,
-                    "items.product": item.productId
-                },
-                update: {
-                    $inc: { "items.$.quantity": item.quantity }
+
+    const bulkOps = items.map((item) => ({
+        updateOne: {
+            filter: {
+                owner: req.user._id,
+                "items.product": item.productId
+            },
+            update: {
+                $inc: {
+                    "items.$.quantity": item.quantity
                 }
             }
         }
-    });
-    //🔥 Step 1: Increase quantity where product already exists
+    }));
 
-    await Cart.bulkWrite(bulkOps)
 
-    // 🔥 Step 2: Add missing products (not already in cart)
+    await Cart.bulkWrite(bulkOps);
+
+
 
     await Cart.updateOne(
-        { owner: req.user._id },
+        {
+            owner: req.user._id
+        },
         {
             $addToSet: {
                 items: {
-                    $each: items.map((i) => {
-                        return {
-                            product: i.productId,
-                            quantity: i.quantity
-                        }
-                    })
+                    $each: items.map((i) => ({
+                        product: i.productId,
+                        quantity: i.quantity
+                    }))
                 }
             }
-        },
-
-    )
-    const updateCart = await Cart.findOne({ owner: req.user._id })
-
-    return res.json(
-        new apiResponse(200, updatedCart, "cart synced using bulkWrite")
+        }
     );
 
-})
+
+    const updatedCart = await Cart.findOne({
+        owner: req.user._id
+    });
+
+
+    // total quantity calculate
+    const totalItems = updatedCart.items.reduce(
+        (total, item) => total + item.quantity,
+        0
+    );
+
+
+    updatedCart.totalItems = totalItems;
+
+    await updatedCart.save();
+
+
+
+    return res.json(
+        new apiResponse(
+            200,
+            updatedCart, totalItems &&
+            "cart synced using bulkWrite"
+        )
+    );
+
+});
 
 export {
 

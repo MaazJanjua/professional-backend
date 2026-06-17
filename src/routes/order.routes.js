@@ -2,16 +2,17 @@ import { Router } from 'express';
 import {
     createOrder,
     getUserOrders,
+    getUserOrders1,
     getOrderById,
     cancelOrder,
     updateOrderStatus,
     updatePaymentStatus,
     getAllOrders,
     getAllMyOrders,
-    deleteOrder
+    deleteOrder 
 } from '../controllers/order.controller.js';
 
-import { verifyJWT } from '../middlewares/auth.middleware.js';
+import  verifyJWT  from '../middlewares/auth.middleware.js';
 const router = Router();
 router.use(verifyJWT);//apply veriftJWT middleware to all routes in this file
 
@@ -21,7 +22,12 @@ router.route('/')
 
 router.route('/my-orders')
     .get(getUserOrders)
+    .get(getUserOrders1)
     .get(getAllMyOrders)
+
+router.route('/my-orders1')
+    .get(getUserOrders1)
+
 
 router.route('/:orderId')
     .get(getOrderById)

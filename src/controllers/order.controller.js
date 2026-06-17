@@ -28,9 +28,6 @@ const createOrder = asyncHandler(async (req, res) => {
     //                             |
     //                             Success response
 
-
-
-
     const userId = req.user._id;
 
     const { shippingAddress } = req.body;
@@ -67,13 +64,11 @@ const createOrder = asyncHandler(async (req, res) => {
 
 
         // 2. Get products from DB
-
         const products = await Product.find({
             _id: {
                 $in: cart.items.map(item => item.product)
             }
         }).session(session);
-
 
 
         let orderItems = [];
@@ -139,13 +134,16 @@ const createOrder = asyncHandler(async (req, res) => {
                     session
                 }
             );
+
         }
 
+        const orderNumber = `ORD-${Date.now()}`;
         // 5. Create order
 
         const order = await Order.create(
             [
                 {
+                    orderNumber,
                     user: userId,
                     items: orderItems,
                     totalAmount,
@@ -203,21 +201,92 @@ const getUserOrders = asyncHandler(async (req, res) => {
     // 👉 current user ke sab orders fetch
     // 👉 “My Orders” page
 
-    const orders = await Order.find({
-        user: req.user._id
-    }).sort({
-        createdAt: -1
-    })
-        .populate(
-            "user",
-            "name email"
-        )
+    // const orders = await Order.find({
+    //     user: req.user._id
+    // })
+    const activeOrders = await Order.find({
+        user: req.user._id,
 
-    if (!orders || orders.length === 0) {
+        orderStatus: {
+            $nin: ["cancelled", "delivered"]
+        }
+    })
+        .populate("user", "username fullName email")
+        .populate("items.product", "title price images")
+        .sort({
+            createdAt: -1
+        })
+
+    // if (!orders || orders.length === 0) {
+    //     throw new apiError(404, 'orders not found')
+    // }
+    if (!activeOrders || activeOrders.length === 0) {
         throw new apiError(404, 'orders not found')
     }
-    return res.status(200).json(new apiResponse(200, orders, 'orders fetched successfully'))
+
+    const cancelledOrders = await Order.find({
+        user: req.user._id,
+        orderStatus: "cancelled"
+    }).populate("user", "username fullName email")
+        .populate("items.product", "title price images");
+
+
+    const orderHistory = await Order.find({
+        user: req.user._id,
+        orderStatus: {
+            $in: ["delivered", "cancelled"]
+        }
+    }).populate("user", "username fullName email")
+        .populate("items.product", "title price images");
+
+    return res.status(200).json(new apiResponse(200, {
+
+        cancelledOrders,
+        activeOrders,
+        orderHistory
+    }, 'orders fetched successfully'))
 })
+
+const getUserOrders1 = asyncHandler(async (req, res) => {
+    // Active Orders
+    const activeOrders = await Order.find({
+        user: req.user._id,
+        orderStatus: {
+            $in: ["pending", "confirmed", "shipped"]
+        }
+    })
+        .populate("user", "username fullName email")
+        .populate("items.product", "title price images")
+        .sort({ createdAt: -1 });
+
+    // Order History
+    const orderHistory = await Order.find({
+        user: req.user._id,
+        orderStatus: {
+            $in: ["delivered", "cancelled"]
+        }
+    })
+        .populate("user", "username fullName email")
+        .populate("items.product", "title price images")
+        .sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new apiResponse(
+            200,
+            {
+                activeOrders,
+                orderHistory,
+                summary: {
+                    activeOrdersCount: activeOrders.length,
+                    historyCount: orderHistory.length
+                }
+            },
+            "Orders fetched successfully"
+        )
+    );
+});
+
+
 
 const getOrderById = asyncHandler(async (req, res) => {
     //     👉 order detail page
@@ -284,6 +353,8 @@ const cancelOrder = asyncHandler(async (req, res) => {
             })
         )
     );
+
+    Product.stock
 
     // 4. Order status update
     order.orderStatus = "cancelled";
@@ -501,15 +572,17 @@ const getAllMyOrders = asyncHandler(async (req, res) => {
     }
 
 
-    const orders = await Order.find({
-        user: userId
-    })
-        .populate("items.product", "title price image")
+    const orders = await Order.find({ user: userId })
+        .select(
+            "orderNumber items totalAmount orderStatus paymentStatus trackingNumber createdAt"
+        )
+        .populate("items.product", "title price images")
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)
         .limit(limitNumber)
 
 
+        
     const totalOrders = await Order.countDocuments({ user: userId })
 
 
@@ -567,6 +640,7 @@ const deleteOrder = asyncHandler(async (req, res) => {
 export {
     createOrder,
     getUserOrders,
+    getUserOrders1,
     getOrderById,
     cancelOrder,
     updateOrderStatus,

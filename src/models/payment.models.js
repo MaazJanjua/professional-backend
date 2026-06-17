@@ -16,7 +16,7 @@ const paymentSchema = new Schema({
         type: Number,
         required: true
     },
-    currency: {
+    currency: { 
         type: String,
         default: "PKR"
     },
@@ -35,8 +35,11 @@ const paymentSchema = new Schema({
         type: String,
         enum: [
             "pending",
+            "processing",
             "paid", 
-            "failed"
+            "failed",
+            "refunded",
+            "cancelled"
         ],
         default: "pending"
     },
