@@ -10,7 +10,7 @@ const paymentSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "Order",
         required: true
-
+ 
     },
     amount: {
         type: Number,

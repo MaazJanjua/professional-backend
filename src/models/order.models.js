@@ -7,7 +7,7 @@ const orderSchema = new Schema({
     },
     orderNumber: {
         type: String,  
-        unique: true
+        unique: true 
     },
  
     items: [

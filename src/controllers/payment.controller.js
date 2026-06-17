@@ -13,8 +13,9 @@ import apiResponse from '../utils/apiResponse.js';
 const createPayment = asyncHandler(async (req, res) => {
 
     const { orderId, paymentMethod } = req.body
+    const userId = req.user._id
 
-    const order = Order.findById(orderId)
+    const order = await Order.findById(orderId)
 
     if (!order) {
         throw new apiError(404, "Order not found")
@@ -47,6 +48,8 @@ const createPayment = asyncHandler(async (req, res) => {
             201, payment, 'payment Created  successfully'
         ))
 })
+
+
 const verifyPayment = asyncHandler(async (req, res) => {
 
     const {
@@ -57,10 +60,17 @@ const verifyPayment = asyncHandler(async (req, res) => {
     } = req.body
 
 
+
+
     const session = await mongoose.startSession()
 
     try {
+
         session.startTransaction()
+
+        if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+            throw new apiError(400, 'invalid paymentId')
+        }
 
         const payment = await Payment.findById(paymentId).session(session)
 
@@ -161,7 +171,9 @@ const getPaymentByOrderId = asyncHandler(async (req, res) => {
 
 
 
-const getUserPayments = asyncHandler(async (req, res) => { })
+const getUserPayments = asyncHandler(async (req, res) => {
+
+})
 const getpaymentById = asyncHandler(async (req, res) => { })
 const updatePaymentStatus = asyncHandler(async (req, res) => { })
 const confirmCODPayment = asyncHandler(async (req, res) => { })

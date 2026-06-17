@@ -14,14 +14,14 @@ import {
 import verifyJWT from '../middlewares/auth.middleware.js'
 
 const router = Router();
-router.use(verifyJWT); 
+router.use(verifyJWT);
 
 router.route('/')
     .post(createPayment)
     .get(getUserPayments);
 
 router.route('/:paymentId')
-    .get(getpaymentById) 
+    .get(getpaymentById)
     .patch(updatePaymentStatus);
 
 router.route('/verify')
@@ -32,7 +32,7 @@ router.route('/confirm-cod')
 
 router.route('/:orderId/refund')
     .post(refundPayment);
-    
+
 router.route('/order/:orderId')
     .get(getPaymentByOrderId);
 
