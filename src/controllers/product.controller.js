@@ -5,6 +5,7 @@ import apiError from '../utils/apiError.js';
 import apiResponse from '../utils/apiResponse.js';
 import Product from '../models/product.models.js';
 import Review from '../models/reviews.models.js';
+import validateProductNotFound from '../utils/globalValidators.js'
 
 //update required product images  
 const createProduct = asyncHandler(async (req, res) => {
@@ -104,9 +105,11 @@ const getProductById = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid product ID")
     }
     const product = await Product.findById(productId)
-    if (!product) {
-        throw new apiError(404, 'product not found ')
-    }
+
+    validateProductNotFound(
+        NotFoundProduct
+    )
+
     return res
         .status(200)
         .json(new apiResponse(200, product, 'product fetched by productId successfully'))

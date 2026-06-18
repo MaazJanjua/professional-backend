@@ -6,45 +6,21 @@ import Product from "../models/product.models.js";
 import Order from "../models/order.models.js";
 import apiResponse from "../utils/apiResponse.js";
 
+//validators IMPORTS
+import { validateShippingAddress } from '../utils/orderValidators.js'
+import { validateProductNotFound } from '../utils/globalValidators.js'
 
 
 const createOrder = asyncHandler(async (req, res) => {
 
-    // User
-    //     |
-    //     Checkout
-    //     |
-    //     Cart database se items lo
-    //         |
-    //         Product database se latest price + stock lo
-    //             |
-    //             Stock check
-    //                 |
-    //                 Order create
-    //                     |
-    //                     Product stock minus
-    //                         |
-    //                         Cart empty
-    //                             |
-    //                             Success response
-
     const userId = req.user._id;
-
     const { shippingAddress } = req.body;
-    if (
-        !shippingAddress ||
-        !shippingAddress.name ||
-        !shippingAddress.phoneNumber ||
-        !shippingAddress.city ||
-        !shippingAddress.address ||
-        !shippingAddress.email
-    ) {
-        throw new apiError(400, "Shipping address required");
-    }
 
+    validateShippingAddress(
+        shippingAddress
+    )
 
     const session = await mongoose.startSession();
-
 
     try {
 
@@ -52,16 +28,11 @@ const createOrder = asyncHandler(async (req, res) => {
 
         // 1. Find user cart
 
-        const cart = await Cart.findOne({
-            owner: userId
-        }).session(session);
+        const cart = await Cart.findOne({ owner: userId }).session(session);
 
-
-        if (!cart || cart.items.length === 0) {
-            throw new apiError(400, "Cart is empty");
-        }
-
-
+        validateOrderEmptycart(
+            cartEmpty
+        )
 
         // 2. Get products from DB
         const products = await Product.find({
@@ -70,43 +41,30 @@ const createOrder = asyncHandler(async (req, res) => {
             }
         }).session(session);
 
-
         let orderItems = [];
         let totalAmount = 0;
 
-
         // 3. Check stock + prepare order items
-
         for (const cartItem of cart.items) {
 
             //Product find karna
-
             const product = products.find(
                 p =>
                     p._id.toString() === cartItem.product.toString()
             );
 
             //Product exist check
+            validateProductNotFound(
+                NotFoundProduct
+            )
 
-            if (!product) {
-                throw new apiError(
-                    404,
-                    "Product not found"
-                );
-            }
             //Stock check
             if (product.stock < cartItem.quantity) {
-
-                throw new apiError(
-                    400,
-                    `${product.title} stock not available`
-                );
+                throw new apiError(400, `${product.title} stock not available`);
             }
 
             // order snapshot
-
             orderItems.push({
-
                 product: product._id,
                 title: product.title,
                 image: product.images?.[0]?.url || "",
@@ -140,19 +98,14 @@ const createOrder = asyncHandler(async (req, res) => {
         const orderNumber = `ORD-${Date.now()}`;
         // 5. Create order
 
-        const order = await Order.create(
-            [
-                {
-                    orderNumber,
-                    user: userId,
-                    items: orderItems,
-                    totalAmount,
-                    shippingAddress
-                }
-            ],
+        const order = await Order.create([
             {
-                session
-            }
+                orderNumber,
+                user: userId,
+                items: orderItems,
+                totalAmount,
+                shippingAddress
+            }], { session }
         );
 
         // 6. Empty cart
@@ -177,33 +130,25 @@ const createOrder = asyncHandler(async (req, res) => {
         await session.commitTransaction();
 
         return res.status(201).json({
-
             success: true,
-
             message: "Order created successfully",
-
             order: order[0]
-
         });
 
     } catch (error) {
         await session.abortTransaction();
-
         throw error;
     }
     finally {
         session.endSession();
     }
-
 });
 
 const getUserOrders = asyncHandler(async (req, res) => {
     // 👉 current user ke sab orders fetch
     // 👉 “My Orders” page
 
-    // const orders = await Order.find({
-    //     user: req.user._id
-    // })
+    //
     const activeOrders = await Order.find({
         user: req.user._id,
 
@@ -217,9 +162,7 @@ const getUserOrders = asyncHandler(async (req, res) => {
             createdAt: -1
         })
 
-    // if (!orders || orders.length === 0) {
-    //     throw new apiError(404, 'orders not found')
-    // }
+  
     if (!activeOrders || activeOrders.length === 0) {
         throw new apiError(404, 'orders not found')
     }
@@ -395,14 +338,8 @@ const updateOrderStatus = asyncHandler(async (req, res, next) => {
         throw new apiError(400, 'invalid order status')
     }
 
-    if (
-        order.orderStatus === "delivered" ||
-        order.orderStatus === "cancelled"
-    ) {
-        throw new apiError(
-            400,
-            "order already delivered or cancelled"
-        )
+    if (order.orderStatus === "delivered" || order.orderStatus === "cancelled") {
+        throw new apiError(400, "order already delivered or cancelled")
     }
 
     // status flow
@@ -582,7 +519,7 @@ const getAllMyOrders = asyncHandler(async (req, res) => {
         .limit(limitNumber)
 
 
-        
+
     const totalOrders = await Order.countDocuments({ user: userId })
 
 

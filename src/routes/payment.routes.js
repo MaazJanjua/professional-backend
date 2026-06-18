@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
     createPayment,
     verifyPayment,
+    paymentWebhook,
     getPaymentByOrderId,
     getUserPayments,
     getpaymentById,
@@ -25,7 +26,8 @@ router.route('/:paymentId')
     .patch(updatePaymentStatus);
 
 router.route('/verify')
-    .post(verifyPayment);
+    .post(verifyPayment)
+    .post(paymentWebhook);
 
 router.route('/confirm-cod')
     .post(confirmCODPayment);

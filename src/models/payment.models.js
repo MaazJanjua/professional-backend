@@ -9,14 +9,15 @@ const paymentSchema = new Schema({
     order: {
         type: Schema.Types.ObjectId,
         ref: "Order",
-        required: true
- 
+        required: true,
+        unique: true
+
     },
     amount: {
         type: Number,
         required: true
     },
-    currency: { 
+    currency: {
         type: String,
         default: "PKR"
     },
@@ -36,7 +37,7 @@ const paymentSchema = new Schema({
         enum: [
             "pending",
             "processing",
-            "paid", 
+            "paid",
             "failed",
             "refunded",
             "cancelled"
@@ -44,8 +45,24 @@ const paymentSchema = new Schema({
         default: "pending"
     },
     transactionId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    refundedAt: {
+        type: Date
+    },
+    refundReason: {
         type: String
+    },
+    paidAt: {
+        type: Date
+    },
+    gatewayReference: {
+        type: String,
+        index: true
     }
+
 },
     {
         timestamps: true
