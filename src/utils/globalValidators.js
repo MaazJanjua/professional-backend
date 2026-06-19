@@ -1,22 +1,39 @@
 import apiError from "../utils/apiError.js";
+import mongoose from "mongoose";
 
 
-
-//PRODUCT NOT FOUND / Product exist check
-
-const validateProductNotFound = (NotFoundProduct) => {
-    if (!product) {
-        throw new apiError(404, 'product not found ')
+//validateObjectId
+const validateObjectId = (
+    id,
+    fieldName = "ID"
+) => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new apiError(400, `Invalid ${fieldName}`);
     }
-}
-
-
-// productId check
+};
 
 
 
+// validatePagination
+const validatePagination = (page, limit) => {
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+
+    if (isNaN(pageNumber) || pageNumber < 1) {
+        throw new apiError(400, "Invalid page number");
+    }
+
+    if (isNaN(limitNumber) || limitNumber < 1) {
+        throw new apiError(400, "Invalid limit number");
+    }
+    return {
+        pageNumber,
+        limitNumber
+    };
+};
 
 
 export {
-    validateProductNotFound
+    validateObjectId,
+    validatePagination
 }

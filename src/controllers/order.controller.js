@@ -7,8 +7,19 @@ import Order from "../models/order.models.js";
 import apiResponse from "../utils/apiResponse.js";
 
 //validators IMPORTS
-import { validateShippingAddress } from '../utils/orderValidators.js'
-import { validateProductNotFound } from '../utils/globalValidators.js'
+import {
+    validateShippingAddress,
+    validateOrdersNotFound,
+    validateOrderEmptycart,
+    validateOrderExists
+} from '../utils/orderValidators.js'
+
+import {
+    validateObjectId,
+    validatePagination
+} from '../utils/globalValidators.js'
+
+import { validateProductExists } from '../utils/productValidator.js'
 
 
 const createOrder = asyncHandler(async (req, res) => {
@@ -16,25 +27,19 @@ const createOrder = asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const { shippingAddress } = req.body;
 
-    validateShippingAddress(
-        shippingAddress
-    )
+    validateShippingAddress(shippingAddress)
 
     const session = await mongoose.startSession();
 
     try {
-
         session.startTransaction();
 
-        // 1. Find user cart
-
+        // Find user cart
         const cart = await Cart.findOne({ owner: userId }).session(session);
 
-        validateOrderEmptycart(
-            cartEmpty
-        )
+        validateOrderEmptycart(cartEmpty)
 
-        // 2. Get products from DB
+        // Get products from DB
         const products = await Product.find({
             _id: {
                 $in: cart.items.map(item => item.product)
@@ -44,7 +49,7 @@ const createOrder = asyncHandler(async (req, res) => {
         let orderItems = [];
         let totalAmount = 0;
 
-        // 3. Check stock + prepare order items
+        // Check stock + prepare order items
         for (const cartItem of cart.items) {
 
             //Product find karna
@@ -54,9 +59,7 @@ const createOrder = asyncHandler(async (req, res) => {
             );
 
             //Product exist check
-            validateProductNotFound(
-                NotFoundProduct
-            )
+            validateProductExists(product)
 
             //Stock check
             if (product.stock < cartItem.quantity) {
@@ -96,7 +99,7 @@ const createOrder = asyncHandler(async (req, res) => {
         }
 
         const orderNumber = `ORD-${Date.now()}`;
-        // 5. Create order
+        //Create order
 
         const order = await Order.create([
             {
@@ -108,20 +111,16 @@ const createOrder = asyncHandler(async (req, res) => {
             }], { session }
         );
 
-        // 6. Empty cart
-        await Cart.findOneAndUpdate(
-            {
-                owner: userId
-            },
-            {
-                $set: {
-                    items: []
-                }
-            },
-            {
-                session
+        // Empty cart
+        await Cart.findOneAndUpdate({
+            owner: userId
+        }, {
+            $set: {
+                items: []
             }
-        );
+        }, {
+            session
+        });
 
         // transaction complete/Transaction save
         //Ab Mongo bolta hai:
@@ -145,27 +144,20 @@ const createOrder = asyncHandler(async (req, res) => {
 });
 
 const getUserOrders = asyncHandler(async (req, res) => {
-    // 👉 current user ke sab orders fetch
-    // 👉 “My Orders” page
-
-    //
+    //  current user ke sab orders fetch
+    //  My Orders page
     const activeOrders = await Order.find({
         user: req.user._id,
-
         orderStatus: {
             $nin: ["cancelled", "delivered"]
         }
-    })
-        .populate("user", "username fullName email")
+    }).populate("user", "username fullName email")
         .populate("items.product", "title price images")
         .sort({
             createdAt: -1
         })
 
-  
-    if (!activeOrders || activeOrders.length === 0) {
-        throw new apiError(404, 'orders not found')
-    }
+    validateOrdersNotFound(NotFoundOrders)
 
     const cancelledOrders = await Order.find({
         user: req.user._id,
@@ -182,8 +174,8 @@ const getUserOrders = asyncHandler(async (req, res) => {
     }).populate("user", "username fullName email")
         .populate("items.product", "title price images");
 
-    return res.status(200).json(new apiResponse(200, {
 
+    return res.status(200).json(new apiResponse(200, {
         cancelledOrders,
         activeOrders,
         orderHistory
@@ -197,8 +189,7 @@ const getUserOrders1 = asyncHandler(async (req, res) => {
         orderStatus: {
             $in: ["pending", "confirmed", "shipped"]
         }
-    })
-        .populate("user", "username fullName email")
+    }).populate("user", "username fullName email")
         .populate("items.product", "title price images")
         .sort({ createdAt: -1 });
 
@@ -208,8 +199,7 @@ const getUserOrders1 = asyncHandler(async (req, res) => {
         orderStatus: {
             $in: ["delivered", "cancelled"]
         }
-    })
-        .populate("user", "username fullName email")
+    }).populate("user", "username fullName email")
         .populate("items.product", "title price images")
         .sort({ createdAt: -1 });
 
@@ -229,27 +219,24 @@ const getUserOrders1 = asyncHandler(async (req, res) => {
     );
 });
 
-
-
 const getOrderById = asyncHandler(async (req, res) => {
-    //     👉 order detail page
-    // 👉 tracking + items show
+    //  order detail page
+    // tracking + items show
     const { orderId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, 'invalid orderId')
-    }
-    // 🔐 ownership + fetch order
+
+    validateObjectId(orderId, "order id")
+
+    // ownership + fetch order
     const findUser = await Order.findOne({
         _id: orderId,
         user: req.user._id
     }).populate("items.product", "title images price")
         .populate("user", "name email");
 
-
     const order = await Order.findById(orderId)
-    if (!order) {
-        throw new apiError(404, 'order not found')
-    }
+
+    validateOrderExists(order)
+
     return res
         .status(200)
         .json(new apiResponse(200, order, 'order fetched by id successfully'))
@@ -261,15 +248,11 @@ const cancelOrder = asyncHandler(async (req, res) => {
     //  stock restore logic
     const { orderId } = req.params
 
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, 'invalid orderId')
-    }
+    validateObjectId(orderId, "order id")
 
     const order = await Order.findById(orderId)
 
-    if (!order) {
-        throw new apiError(404, 'order not found')
-    }
+    validateOrderExists(order)
 
     //  ownership check
     if (order.user.toString() !== req.user._id.toString()) {
@@ -312,20 +295,15 @@ const cancelOrder = asyncHandler(async (req, res) => {
 })
 
 const updateOrderStatus = asyncHandler(async (req, res, next) => {
-    //👉 pending → confirmed → shipped → delivered
+    //pending → confirmed → shipped → delivered
 
     const { orderId } = req.params
     const { status } = req.body
-
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, 'invalid orderId')
-    }
+    validateObjectId(orderId, "order id")
 
     const order = await Order.findById(orderId)
 
-    if (!order) {
-        throw new apiError(404, 'order not found')
-    }
+    validateOrderExists(order)
     const allowedStatus = [
         "pending",
         "confirmed",
@@ -374,14 +352,10 @@ const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
     await order.save()
 
-
-
-
     return res
         .status(200)
         .json(new apiResponse(200, status, 'order status updated succesfully'))
 })
-
 
 const updatePaymentStatus = asyncHandler(async (req, res) => {
     //  payment success/fail update
@@ -389,7 +363,6 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
 
 
 })
-
 
 
 const getAllOrders = asyncHandler(async (req, res) => {
@@ -404,17 +377,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
         limit = 10
     } = req.query
 
-    const pageNumber = parseInt(page)
-    const limitNumber = parseInt(limit)
-
-    // pagination validation
-    if (isNaN(pageNumber) || pageNumber < 1) {
-        throw new apiError(400, "invalid page number")
-    }
-
-    if (isNaN(limitNumber) || limitNumber < 1 || limitNumber > 100) {
-        throw new apiError(400, "invalid limit number")
-    }
+    const { pageNumber, limitNumber } = validatePagination(page, limit)
 
     // allowed status
     const allowedStatus = [
@@ -429,11 +392,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
         throw new apiError(400, "invalid status")
     }
 
-    if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new apiError(400, "invalid userId")
-    }
-
-
+    validateObjectId(userId, 'user id')
 
     // better date validation
     let start, end
@@ -465,14 +424,11 @@ const getAllOrders = asyncHandler(async (req, res) => {
         }
     }
 
-
-
     const orders = await Order.find(filter)
         .populate("user", 'name email')
         .sort({ createdAt: -1 })
         .limit(limitNumber)
         .skip((pageNumber - 1) * limitNumber)
-
 
     const totalOrders = await Order.countDocuments(filter)
 
@@ -490,38 +446,23 @@ const getAllOrders = asyncHandler(async (req, res) => {
     )
 })
 
-
 const getAllMyOrders = asyncHandler(async (req, res) => {
 
     const userId = req.user._id
 
     const { page = 1, limit = 10 } = req.query
 
-    const pageNumber = parseInt(page)
-    const limitNumber = parseInt(limit)
-
-    if (isNaN(pageNumber) || pageNumber < 1) {
-        throw new apiError(400, "invalid page number")
-    }
-
-    if (isNaN(limitNumber) || limitNumber < 1) {
-        throw new apiError(400, "invalid limit number")
-    }
-
+    const { pageNumber, limitNumber } = validatePagination(page, limit)
 
     const orders = await Order.find({ user: userId })
         .select(
             "orderNumber items totalAmount orderStatus paymentStatus trackingNumber createdAt"
-        )
-        .populate("items.product", "title price images")
+        ).populate("items.product", "title price images")
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)
         .limit(limitNumber)
 
-
-
     const totalOrders = await Order.countDocuments({ user: userId })
-
 
     return res.status(200).json(
         new apiResponse(
@@ -537,20 +478,16 @@ const getAllMyOrders = asyncHandler(async (req, res) => {
     )
 })
 
-
 const deleteOrder = asyncHandler(async (req, res) => {
 
-    const { orderId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, 'orderId is invalid')
-    }
+    validateObjectId(orderId, 'order id')
+
     const order = await Order.findOne({
         _id: orderId,
         user: req.user._id
     })
-    if (!order) {
-        throw new apiError(404, 'order not fund')
-    }
+
+    validateOrderExists(order)
 
     // 3. business rule: only allow delete if pending or cancelled
     if (order.orderStatus !== "pending" && order.orderStatus !== "cancelled") {
@@ -573,7 +510,6 @@ const deleteOrder = asyncHandler(async (req, res) => {
     )
 })
 
-
 export {
     createOrder,
     getUserOrders,
@@ -586,5 +522,3 @@ export {
     getAllMyOrders,
     deleteOrder
 }
-
-// 8 controllers functions for order management

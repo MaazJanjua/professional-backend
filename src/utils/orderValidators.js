@@ -24,22 +24,21 @@ const validateOrderEmptycart = (cartEmpty) => {
 
 }
 
-const validateOrderOwnership = () => {
-
+const validateOrdersNotFound = (NotFoundOrders) => {
+    if (!activeOrders || activeOrders.length === 0) {
+        throw new apiError(404, 'orders not found')
+    }
 }
 
-const validateOrderOwnership = () => {
-
+const validateOrderExists = (order) => {
+    if (!order) {
+        throw new apiError(404, 'order not found')
+    }
 }
-
-
-
-
-
-
-
 
 export {
     validateShippingAddress,
-    validateOrderEmptycart
+    validateOrderEmptycart,
+    validateOrdersNotFound,
+    validateOrderExists
 };

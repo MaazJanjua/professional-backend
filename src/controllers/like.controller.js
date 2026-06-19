@@ -6,19 +6,23 @@ import Comment from '../models/comment.models.js';
 import apiError from '../utils/apiError.js';
 import apiResponse from '../utils/apiResponse.js';
 
+//VALIDATE IMPORTS
+import { validateObjectId, validatePagination } from '../utils/globalValidators.js'
+import {
+    validateCommentExists,
+    validateYoutubeExists,
+    validateTweetExists
+} from '../utils/youtubeGalobalValidator.js'
+
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const { videoId } = req.params
 
-    if (!mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new apiError(400, "Invalid video id")
-    }
+    validateObjectId(videoId, "video id")
 
     const video = await Video.findById(videoId)
 
-    if (!video) {
-        throw new apiError(400, 'invalid video')
-    }
+    validateYoutubeExists(youtube)
 
     const deleteLike = await Like.findOneAndDelete({
         video: videoId,
@@ -49,32 +53,37 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 })
 const toggleCommentLike = asyncHandler(async (req, res) => {
     const { commentId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(commentId)) {
-        throw new apiError(400, 'invalid comment Id')
-    }
+
+    validateObjectId(commentId, 'comment id')
+
     const comment = await Comment.findById(commentId)
-    if (!comment) {
-        throw new apiError(400, 'invalid comment')
-    }
+
+    validateCommentExists(comment)
+
     const deleteCommentLike = await Like.findOneAndDelete({
         comment: commentId,
         likedBy: req.user._id
     })
+
     if (deleteCommentLike) {
         return res
             .status(200)
             .json(new apiResponse(200, { liked: false }, 'comment unlike successfully'))
     }
+
     const CommentLikeCreated = await Like.create({
         comment: commentId,
         likedBy: req.user._id
     })
+
     if (!CommentLikeCreated) {
         throw new apiError(400, 'like create operation failed')
     }
+
     const CommentLikeCount = await Like.countDocuments({
         comment: commentId
     })
+
     return res
         .status(200)
         .json(new apiResponse(200, {
@@ -82,32 +91,36 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
             CommentLikeCount
         }, 'comment liked Succesfully'))
 })
+
 const toggleTweetLike = asyncHandler(async (req, res) => {
     const { tweetId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(tweetId)) {
-        throw new apiError(400, 'invalid tweet id')
-    }
+
+    validateObjectId(tweetId, 'tweet id')
 
     const tweet = await Tweet.findById(tweetId)
-    if (!tweet) {
-        throw new apiError(400, 'invalid tweet')
-    }
+
+    validateTweetExists(tweet)
+
     const deleteTweetLike = await Like.findOneAndDelete({
         tweet: tweetId,
         likedBy: req.user._id
     })
+
     if (deleteTweetLike) {
         return res.status(200)
             .json(new apiResponse
                 (200, { liked: false }, 'Tweet unlike successfully'))
     }
+
     const tweetLikeCreate = await Like.create({
         tweet: tweetId,
         likedBy: req.user._id
     })
+
     const tweetLikeCount = await Like.countDocuments({
         tweet: tweetId
     })
+
     return res
         .status(200)
         .json(new apiResponse(200, {
@@ -117,21 +130,15 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
 })
 const getLikedVideos = asyncHandler(async (req, res) => {
+
     const { page = 1, limit = 10 } = req.query
-    const pageNumbers = parseInt(page)
-    const limitNumbers = parseInt(limit)
-    if (isNaN(pageNumbers) || pageNumbers < 1) {
-        throw new apiError(400, 'invalid page Number')
-    }
-    if (isNaN(limitNumbers) || limitNumbers < 1) {
-        throw new apiError(400, 'invalid limit Number')
-    }
-    const likedVideo = await Like.find(
-        {
-            likedBy: req.user._id,
-            video: { $exists: true }
-        }
-    ).populate("video", "thumbnail title owner")
+
+    const { pageNumbers, limitNumbers } = validatePagination(page, limit)
+
+    const likedVideo = await Like.find({
+        likedBy: req.user._id,
+        video: { $exists: true }
+    }).populate("video", "thumbnail title owner")
         .limit(limitNumbers)
         .skip((pageNumbers - 1) * limitNumbers)
         .sort({ createdAt: -1 })

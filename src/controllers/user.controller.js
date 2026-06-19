@@ -10,7 +10,7 @@ import jwt from 'jsonwebtoken'
 // import { v2 as cloudinary } from 'cloudinary'
 
 const cookiesOptions = {
-    httpOnly: true, 
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production"
     // sameSite: 'strict',
     // maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -137,18 +137,12 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
     //extrect data from forntend end email and password
     const { email, username, password } = req.body
+
     //validation in forntend data
-    //if we need to go with anyone like with username/email
-
-    // if (!(username || email)) {
-    //     throw new apiError(400, 'username/email and password is required')
-    // }
-
-    // if we need with both username amd email
-
     if (!username && !email) {
         throw new apiError(400, 'username/email and password is required')
     }
+
     //User.findOne 
     const user = await User.findOne({
         $or: [
@@ -156,24 +150,25 @@ const loginUser = asyncHandler(async (req, res) => {
             { email }
         ]
     })
+
     if (!user) {
         throw new apiError(404, 'User doesnot exist')
     }
+
     //Passsword Verification
     const isPasswordCorrect = await user.isPasswordCorrect(password);
+
     if (!isPasswordCorrect) {
         throw new apiError(401, 'Password is incorrect')
     }
+
     // Access/Refresh token generate
     // Destructuring
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
-    // cookie/session
-    // const cookiesOption = {
-    //     httpOnly: true,
-    //     secure: true
-    // }
+
     const loggedinUser = await User.findById(user._id).select("-password -refreshToken")
-    //response bhjho
+
+    //response 
     return res
         .status(200)
         .cookie("accessToken", accessToken, cookiesOptions)
@@ -187,7 +182,6 @@ const loginUser = asyncHandler(async (req, res) => {
                 },
                 "User LoggedIn Successfully ")
         )
-    //error handling
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -200,19 +194,13 @@ const logoutUser = asyncHandler(async (req, res) => {
             }
         }, {
         new: true
-    }
-    )
-    // const cookiesOption = {
-    //     httpOnly: true,
-    //     secure: true
-    // }
+    })
+
     return res
         .status(200)
         .clearCookie("accessToken", cookiesOptions)
         .clearCookie("refreshToken", cookiesOptions)
         .json(new apiResponse(200, {}, 'User LoggedOut Successfully'))
-
-
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -252,26 +240,32 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 })
 
 const changePassword = asyncHandler(async (req, res) => {
+
     const { oldPassword, newPassword, confPassword } = req.body
+
     if (newPassword !== confPassword) {
         throw new apiError(400, 'newPassword and confPassword should be equal')
     }
 
     const user = await User.findById(req.user?._id)
+
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
     if (!isPasswordCorrect) {
         throw new apiError(401, 'Invalid Old Password')
     }
+
     user.password = newPassword
+
     await user.save({ validateBeforeSave: false })
+
     return res
         .status(200)
         .json(new apiResponse(200, {}, "Password Changed Successfully"))
-
 })
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+    
     return res
         .status(200)
         .json(
@@ -284,10 +278,13 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 })
 
 const updateAccountDetail = asyncHandler(async (req, res) => {
+
     const { fullName, email } = req.body
+
     if (!fullName && !email) {
         throw new apiError(400, 'at least one field is required')
     }
+
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
@@ -298,25 +295,29 @@ const updateAccountDetail = asyncHandler(async (req, res) => {
         },
         { new: true }
     ).select('-password')
+
     return res
         .status(200)
         .json(new apiResponse(200, user, 'Account Detailed Fetched Successfully'))
-
 })
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
     const avatarLocalPath = req.file?.path
+
     if (!avatarLocalPath) {
         throw new apiError(400, 'avatar Localfile is missing')
     }
 
     // existing user
     const existingUser = await User.findById(req.user._id)
+
     // upload new avatar on cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath)
+
     if (!avatar?.url) {
         throw new apiError(400, 'Error while uploading Avatar file ')
     }
+
     // update user avatar in DB
     const user = await User.findByIdAndUpdate(
         req.user._id,
@@ -345,7 +346,6 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         const publicId = `${folderName}/${withoutExtension}`
         // delete from cloudinary
         await deleteFromCloudinary(publicId)
-
     }
 
     return res
@@ -358,16 +358,20 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 const updateUserCoverImage = asyncHandler(async (req, res) => {
     //multer middlware for reciving path 
     const coverImageLocalPath = req.file?.path
+
     //validation if file path exists
     if (!coverImageLocalPath) {
         throw new apiError(400, 'coverImage Localfile is missing')
     }
+
     //upload on cloudinary
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
     //validation if we are not getting file`s url
     if (!coverImage?.url) {
         throw new apiError(400, 'error getting while uploading coverImage uploading')
     }
+
     // findByIdAndUpdate  
     const user = await User.findByIdAndUpdate(
         req.user._id,
@@ -379,6 +383,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         },
         { new: true }
     ).select('-password')
+
     return res
         .status(200)
         .json(

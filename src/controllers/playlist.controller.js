@@ -4,54 +4,63 @@ import apiError from '../utils/apiError.js';
 import apiResponse from '../utils/apiResponse.js'
 import Playlist from "../models/playlist.models.js";
 
+// VALIDATOR IMPORTS
+import { validatePlaylistExists } from '../utils/youtubeGalobalValidator.js';
+import { validateObjectId } from '../utils/globalValidators.js';
+
 
 const createPlatlist = asyncHandler(async (req, res) => {
+    
     const { name, description } = req.body
+
     if (!name?.trim() || !description?.trim()) {
         throw new apiError(400, 'name & description required')
     }
+
     const playlist = await Playlist.create({
         name,
         description,
         owner: req.user._id
     })
-    if (!playlist) {
-        throw new apiError(400, 'playlist creation operation failed')
-    }
+
+    validatePlaylistExists(playlist)
+
     return res
         .status(200)
         .json(new apiResponse(200, playlist, 'playlist created successfully'))
 })
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
+
     const { userId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new apiError(400, 'user Id invalid')
-    }
+
+    validateObjectId(userId, 'user id')
+
     const playlist = await Playlist.find({
         owner: userId
     }).populate("owner", 'username avatar thumbnail')
+
     if (!playlist) {
         throw new apiError(400, 'playlist invalid')
     }
+
     return res
         .status(200)
-
         .json(new apiResponse(200, playlist, 'getPlaylists Successfully'))
 })
 
 const getPlaylistById = asyncHandler(async (req, res) => {
+
     const { playlistId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
-        throw new apiError(400, 'playlist Id invalid')
-    }
+
+    validateObjectId(playlistId, 'playlist id')
+
     const playlist = await Playlist.findById(playlistId)
         .populate("owner", 'username thumbnail avatar')
         .populate("videos")
 
-    if (!playlist) {
-        throw new ApiError(404, 'Playlist not found')
-    }
+    validatePlaylistExists(playlist)
+
     return res
         .status(200)
         .json(new ApiResponse(200, playlist, 'Playlist fetched successfully'))
@@ -59,10 +68,13 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
+
     const { playlistId, videoId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(playlistId) || !mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new apiError(400, 'playlistId/videoId invalid')
-    }
+
+    validateObjectId(playlistId, 'playlist id')
+
+    validateObjectId(videoId, 'video id')
+
     const playlist = await Playlist.findOneAndUpdate(
         {
             _id: playlistId,
@@ -78,6 +90,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
             new: true
         }
     )
+
     if (!playlist) {
         throw new ApiError(404, 'Playlist not found or unauthorized')
     }
@@ -89,10 +102,12 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 
 const removeVideoFormPlaylist = asyncHandler(async (req, res) => {
     const { playlistId, videoId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(playlistId) || !mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new apiError(400, 'invalid playlistId/videoId')
-    }
-    Playlist.findOneAndUpdate(
+
+    validateObjectId(playlistId, 'playlist id')
+
+    validateObjectId(videoId, 'video id')
+
+    const playlist = await Playlist.findOneAndUpdate(
         {
             _id: playlistId,
             owner: req.user._id
@@ -104,28 +119,29 @@ const removeVideoFormPlaylist = asyncHandler(async (req, res) => {
         },
         { new: true }
     )
-    if (!playlist) {
-        throw new ApiError(404, 'playlist not found or unauthorized')
-    }
+
+    validatePlaylistExists(playlist)
+
     return res.status(200)
         .json(new ApiResponse(200, playlist, 'video deleted Successfully from playlist'))
 
 })
 
 const deletePlaylist = asyncHandler(async (req, res) => {
+
     const { playlistId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
-        throw new apiError(400, 'invalid playlistId')
-    }
+
+    validateObjectId(playlistId, 'playlist id')
+
     const playlist = await Playlist.findOneAndDelete(
         {
             _id: playlistId,
             owner: req.user._id
         }
     )
-    if (!playlist) {
-        throw new ApiError(404, 'playlist not found or unauthorized')
-    }
+
+    validatePlaylistExists(playlist)
+
     return res
         .status(200)
         .json(new ApiResponse(200, playlist, 'playlist delete successfully'))
@@ -133,15 +149,17 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 })
 
 const updatePlaylist = asyncHandler(async (req, res) => {
+
     const { playlistId } = req.params
+
     const { name, description } = req.body
-    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
-        throw new apiError(400, 'playlistId is invalid'
-        )
-    }
+
+    validateObjectId(playlistId, 'playlist id')
+
     if (!name?.trim() || !description?.trim()) {
         throw new apiError(401, 'name/description is required')
     }
+
     const playlist = await Playlist.findOneAndUpdate(
         {
             _id: playlistId,
@@ -157,11 +175,9 @@ const updatePlaylist = asyncHandler(async (req, res) => {
             new: true
         }
     )
-    if (!playlist) {
-        throw new apiError(
-            404, 'playlist not found or unauthorized'
-        )
-    }
+
+    validatePlaylistExists(playlist)
+
     return res
         .status(200)
         .json(new apiResponse(200, playlist, 'playlist updated successfully'))

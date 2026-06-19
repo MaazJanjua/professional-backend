@@ -6,16 +6,16 @@ import {
     getProductById,
     updateProduct,
     deleteProduct,
-    updateProductStock, 
-    addProductReview, 
+    updateProductStock,
+    addProductReview,
     getProductReviews,
     searchProducts,
-    filterProducts 
+    filterProducts
 } from '../controllers/product.controller.js'
 
 import verifyJWT from '../middlewares/auth.middleware.js'
 const router = Router();
- 
+
 // PUBLIC
 router.route('/').get(getAllProducts)
 router.route('/search/:query').get(searchProducts)

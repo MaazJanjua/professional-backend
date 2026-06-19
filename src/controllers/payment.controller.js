@@ -6,28 +6,26 @@ import Order from '../models/order.models.js'
 import apiError from '../utils/apiError.js';
 import apiResponse from '../utils/apiResponse.js';
 
-
+//VALIDATE IMPORTS
+import { validateObjectId } from '../utils/globalValidators.js';
+import { validateOrderExists } from '../utils/orderValidators.js';
+import {
+    validatePaymentExists,
+    validatePaymentmethod,
+    validategatewayStatus,
+    validateGatewayAmount,
+    validateOrderAmount,
+    validateOrderForpayment
+} from '../utils/paymentValidators.js';
 
 
 const createPayment = asyncHandler(async (req, res) => {
     const { orderId, paymentMethod } = req.body;
     const userId = req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, "Invalid order id");
-    }
+    validateObjectId(orderId, "order id");
 
-    const allowedMethods = [
-        "COD",
-        "CARD",
-        "JAZZCASH",
-        "EASYPAISA",
-        "UPAISA"
-    ];
-
-    if (!paymentMethod || !allowedMethods.includes(paymentMethod)) {
-        throw new apiError(400, "Invalid payment method");
-    }
+    validatePaymentmethod(paymentMethod)
 
     const session = await mongoose.startSession();
 
@@ -38,9 +36,7 @@ const createPayment = asyncHandler(async (req, res) => {
         const order = await Order.findById(orderId)
             .session(session);
 
-        if (!order) {
-            throw new apiError(404, "Order not found");
-        }
+        validateOrderExists(order)
 
         // Ownership check
         if (order.user.toString() !== userId.toString()) {
@@ -51,36 +47,10 @@ const createPayment = asyncHandler(async (req, res) => {
         }
 
         // Order validations
-        if (order.orderStatus === "cancelled") {
-            throw new apiError(
-                400,
-                "Cannot create payment for a cancelled order"
-            );
-        }
+        validateOrderForPayment(order)
 
-        if (order.orderStatus === "delivered") {
-            throw new apiError(
-                400,
-                "Order already delivered"
-            );
-        }
-
-        if (order.paymentStatus === "paid") {
-            throw new apiError(
-                400,
-                "Order is already paid"
-            );
-        }
-
-        if (
-            typeof order.totalAmount !== "number" ||
-            order.totalAmount <= 0
-        ) {
-            throw new apiError(
-                400,
-                "Invalid order amount"
-            );
-        }
+        // totalAmount validations
+        validateOrderAmount(order.totalAmount)
 
         // Existing payment check
         const existingPayment = await Payment.findOne({
@@ -193,8 +163,6 @@ const createPayment = asyncHandler(async (req, res) => {
     }
 });
 
-
-
 const verifyPayment = asyncHandler(async (req, res) => {
     const {
         paymentId,
@@ -204,19 +172,9 @@ const verifyPayment = asyncHandler(async (req, res) => {
     } = req.body;
 
     // Basic Validations
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-        throw new apiError(400, "Invalid payment id");
-    }
+    validateObjectId(paymentId, "payment id");
 
-    const allowedGatewayStatuses = [
-        "success",
-        "failed"
-    ];
-
-    if (!allowedGatewayStatuses.includes(gatewayStatus)) {
-        throw new apiError(400, "Invalid gateway status"
-        );
-    }
+    validategatewayStatus(gatewayStatus);
 
     if (gatewayAmount === undefined ||
         gatewayAmount === null ||
@@ -236,9 +194,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
             paymentId
         ).session(session);
 
-        if (!payment) {
-            throw new apiError(404, "Payment not found");
-        }
+        validatePaymentExists(payment)
 
         // Ownership Check
         if (payment.user.toString() !== req.user._id.toString()) {
@@ -276,9 +232,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
             payment.order
         ).session(session);
 
-        if (!order) {
-            throw new apiError(404, "Order not found");
-        }
+        validateOrderExists(order)
 
         // Order Checks
         if (order.orderStatus === "cancelled") {
@@ -398,9 +352,7 @@ const paymentWebhook = asyncHandler(async (req, res) => {
             payment.order
         ).session(session);
 
-        if (!order) {
-            throw new apiError(404, "Order not found");
-        }
+        validateOrderExists(order)
         if (order.orderStatus === "cancelled") {
             throw new apiError(400, "Order already cancelled");
         }
@@ -482,9 +434,7 @@ const getPaymentByOrderId = asyncHandler(async (req, res) => {
     const { orderId } = req.params
 
     // validate orderId
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, 'invalid order id')
-    }
+    validateObjectId(orderId, "order id");
 
     // find payment
     const payment = await Payment.findOne(
@@ -511,8 +461,6 @@ const getPaymentByOrderId = asyncHandler(async (req, res) => {
     )
 })
 
-
-
 const getUserPayments = asyncHandler(async (req, res) => {
     const userId = req.user._id
     const payments = await Payment.find({ user: userId })
@@ -524,12 +472,9 @@ const getUserPayments = asyncHandler(async (req, res) => {
         .status(200).json(new apiResponse(200, payments, 'payments fetched successfully'))
 })
 
-
 const getPaymentById = asyncHandler(async (req, res) => {
     const { paymentId } = req.params
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-        throw new apiError(400, 'invalid payment id')
-    }
+    validateObjectId(paymentId, "payment id");
     const payment = await Payment.findById(paymentId)
         .populate("order")
         .populate("user", "name email");
@@ -546,8 +491,6 @@ const getPaymentById = asyncHandler(async (req, res) => {
         .status(200).json(new apiResponse(200, payment, 'payment successfully fetched by payment id '))
 })
 
-
-
 const updatePaymentStatus = asyncHandler(async (req, res) => {
     if (req.user.role !== "admin") {
         throw new apiError(
@@ -558,21 +501,20 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
     const { paymentId } = req.params
     const { status } = req.body
 
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-        throw new apiError(400, 'invalid payment id')
-    }
+    validateObjectId(paymentId, "payment id");
 
-    const allowedStatus = [
-        "pending",
-        "processing",
-        "paid",
-        "failed",
-        "refunded",
-        "cancelled"
-    ]
-    if (!allowedStatus.includes(status)) {
-        throw new apiError(400, 'invalid payment status')
-    }
+    // const allowedStatus = [
+    //     "pending",
+    //     "processing",
+    //     "paid",
+    //     "failed",
+    //     "refunded",
+    //     "cancelled"
+    // ]
+    // if (!allowedStatus.includes(status)) {
+    //     throw new apiError(400, 'invalid payment status')
+    // }
+    validateGatewayAmount(status)
 
     const validTransitions = {
         pending: ["processing", "cancelled"],
@@ -665,41 +607,30 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
 
 })
 
-
 const confirmCODPayment = asyncHandler(async (req, res) => {
     if (req.user.role !== "admin") {
-        throw new apiError(
-            403,
-            "Admin access required"
-        );
+        throw new apiError(403, "Admin access required");
     }
     const { orderId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        throw new apiError(400, "Invalid order id");
-    }
+    // validate orderId
+    validateObjectId(orderId, "order id");
 
     const session = await mongoose.startSession();
 
     try {
-
         await session.startTransaction();
 
         const order = await Order.findById(
             orderId
         ).session(session);
-
-        if (!order) {
-            throw new apiError(404, "Order not found");
-        }
+        //validate order exists
+        validateOrderExists(order)
 
         const payment = await Payment.findById(
             order.payment
         ).session(session);
-
-        if (!payment) {
-            throw new apiError(404, "Payment not found");
-        }
+        //validate payment exists
+        validatePaymentExists(payment)
 
         if (payment.paymentMethod !== "COD") {
             throw new apiError(400, "This is not a COD payment");
@@ -740,7 +671,6 @@ const confirmCODPayment = asyncHandler(async (req, res) => {
 
 });
 
-
 const refundPayment = asyncHandler(async (req, res) => {
 
     if (req.user.role !== "admin") {
@@ -754,10 +684,8 @@ const refundPayment = asyncHandler(async (req, res) => {
     }
 
     const { paymentId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-        throw new apiError(400, "Invalid payment id");
-    }
+    // validate paymentId
+    validateObjectId(paymentId, "payment id");
 
     const session = await mongoose.startSession();
 
@@ -768,10 +696,8 @@ const refundPayment = asyncHandler(async (req, res) => {
         const payment = await Payment.findById(
             paymentId
         ).session(session);
-
-        if (!payment) {
-            throw new apiError(404, "Payment not found");
-        }
+        //validate payment exists
+        validatePaymentExists(payment)
 
         // Only paid payments can be refunded
         if (payment.paymentStatus !== "paid") {
@@ -782,22 +708,17 @@ const refundPayment = asyncHandler(async (req, res) => {
         const order = await Order.findById(
             payment.order
         ).session(session);
+        //validate order exists
+        validateOrderExists(order)
 
-        if (!order) {
-
-            throw new apiError(404, "Order not found");
-        }
         if (order.orderStatus === "delivered") {
             throw new apiError(400, "Delivered order cannot be refunded");
         }
 
         // Update payment
         payment.paymentStatus = "refunded";
-
         payment.refundReason = refundReason
-
         payment.refundedAt = new Date();
-
         await payment.save({ session });
 
         // Update order
@@ -812,14 +733,10 @@ const refundPayment = asyncHandler(async (req, res) => {
         await session.commitTransaction();
 
         return res.status(200).json(
-            new apiResponse(
-                200,
-                {
-                    payment,
-                    order
-                },
-                "Payment refunded successfully"
-            )
+            new apiResponse(200, {
+                payment,
+                order
+            }, "Payment refunded successfully")
         );
 
     } catch (error) {
@@ -827,17 +744,12 @@ const refundPayment = asyncHandler(async (req, res) => {
         if (session.inTransaction()) {
             await session.abortTransaction();
         }
-
         throw error;
-
     } finally {
-
         await session.endSession();
-
     }
 
 });
-
 
 export {
     createPayment,
