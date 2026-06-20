@@ -6,10 +6,10 @@ const orderSchema = new Schema({
         required: true
     },
     orderNumber: {
-        type: String,  
-        unique: true 
+        type: String,
+        unique: true
     },
- 
+
     items: [
         {
             product: {
@@ -82,8 +82,11 @@ const orderSchema = new Schema({
         type: String,
         enum: [
             "pending",
+            "processing",
             "paid",
-            "failed"
+            "failed",
+            "refunded",
+            "cancelled"
         ],
         default: "pending"
     },

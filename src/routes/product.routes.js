@@ -10,7 +10,7 @@ import {
     addProductReview,
     getProductReviews,
     searchProducts,
-    filterProducts
+    filterProducts 
 } from '../controllers/product.controller.js'
 
 //RATE LIMITES IMPORTS

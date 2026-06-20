@@ -1,4 +1,4 @@
-import apiEror from '../utils/apiError.js';
+import apiError from '../utils/apiError.js';
 
 
 const validatePaymentExists = (payment) => {
@@ -27,13 +27,13 @@ const validategatewayStatus = (status) => {
         "failed"
     ];
 
-    if (!allowedGatewayStatuses.incloudes(status)) {
+    if (!allowedGatewayStatuses.includes(status)) {
         throw new apiError(400, "Invalid gateway status"
         );
     }
 }
 
-const validateGatewayAmount = (amount) => {
+const validateGatewayAmount = (status) => {
     const allowedStatus = [
         "pending",
         "processing",
@@ -60,7 +60,7 @@ const validateOrderAmount = (totalAmount) => {
 }
 
 
-const validateOrderForpayment = (order) => {
+const validateOrderForPayment = (order) => {
     if (order.orderStatus === "cancelled") {
         throw new apiError(400, "Cannot create payment for a cancelled order");
     }
@@ -81,5 +81,5 @@ export {
     validategatewayStatus,
     validateGatewayAmount,
     validateOrderAmount,
-    validateOrderForpayment
+    validateOrderForPayment
 }

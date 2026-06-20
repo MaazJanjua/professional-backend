@@ -6,7 +6,7 @@ import {
     paymentWebhook,
     getPaymentByOrderId,
     getUserPayments,
-    getpaymentById,
+    getPaymentById,
     updatePaymentStatus,
     confirmCODPayment,
     refundPayment
@@ -34,14 +34,14 @@ router.route('/')
 
 router.route('/verify').post(paymentVerifyLimiter, verifyPayment);
 
-router.route('/confirm-cod').post(financialActionLimiter, confirmCODPayment);
+router.route('/confirm-cod/:orderId').post(financialActionLimiter, confirmCODPayment);
 
-router.route('/:orderId/refund').post(financialActionLimiter, refundPayment);
+router.route('/:paymentId/refund').post(financialActionLimiter, refundPayment);
 
 router.route('/order/:orderId').get(viewLimiter, getPaymentByOrderId);
 
 router.route('/:paymentId')
-    .get(viewLimiter, getpaymentById)
+    .get(viewLimiter, getPaymentById)
     .patch(financialActionLimiter, updatePaymentStatus);
 
 export default router;

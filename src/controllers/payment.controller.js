@@ -15,7 +15,7 @@ import {
     validategatewayStatus,
     validateGatewayAmount,
     validateOrderAmount,
-    validateOrderForpayment
+    validateOrderForPayment
 } from '../utils/paymentValidators.js';
 
 
@@ -124,6 +124,7 @@ const createPayment = asyncHandler(async (req, res) => {
                     paymentStatus: "pending",
                     gatewayReference:
                         crypto.randomUUID()
+                    
                 }
             ],
             { session }
@@ -492,12 +493,7 @@ const getPaymentById = asyncHandler(async (req, res) => {
 })
 
 const updatePaymentStatus = asyncHandler(async (req, res) => {
-    if (req.user.role !== "admin") {
-        throw new apiError(
-            403,
-            "Admin access required"
-        );
-    }
+
     const { paymentId } = req.params
     const { status } = req.body
 
@@ -608,9 +604,7 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
 })
 
 const confirmCODPayment = asyncHandler(async (req, res) => {
-    if (req.user.role !== "admin") {
-        throw new apiError(403, "Admin access required");
-    }
+   
     const { orderId } = req.params;
     // validate orderId
     validateObjectId(orderId, "order id");
@@ -672,10 +666,6 @@ const confirmCODPayment = asyncHandler(async (req, res) => {
 });
 
 const refundPayment = asyncHandler(async (req, res) => {
-
-    if (req.user.role !== "admin") {
-        throw new apiError(403, "Admin access required");
-    }
 
     const { refundReason } = req.body
 

@@ -17,15 +17,15 @@ const validateShippingAddress = (shippingAddress) => {
     }
 };
 
-const validateOrderEmptycart = (cartEmpty) => {
+const validateOrderEmptycart = (cart) => {
     if (!cart || cart.items.length === 0) {
         throw new apiError(400, "Cart is empty");
     }
 
 }
 
-const validateOrdersNotFound = (NotFoundOrders) => {
-    if (!activeOrders || activeOrders.length === 0) {
+const validateOrdersNotFound = (orders) => {
+    if (!orders || orders.length === 0) {
         throw new apiError(404, 'orders not found')
     }
 }

@@ -24,6 +24,6 @@ const validatePlaylistExists = (playlist) => {
 export {
     validateCommentExists,
     validateYoutubeExists,
-    validateTweetExists,
+    validateTweetExists, 
     validatePlaylistExists
 }

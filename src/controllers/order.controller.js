@@ -5,6 +5,7 @@ import Cart from "../models/cart.models.js";
 import Product from "../models/product.models.js";
 import Order from "../models/order.models.js";
 import apiResponse from "../utils/apiResponse.js";
+import Payment from "../models/payment.models.js";
 
 //validators IMPORTS
 import {
@@ -37,7 +38,7 @@ const createOrder = asyncHandler(async (req, res) => {
         // Find user cart
         const cart = await Cart.findOne({ owner: userId }).session(session);
 
-        validateOrderEmptycart(cartEmpty)
+        validateOrderEmptycart(cart)
 
         // Get products from DB
         const products = await Product.find({
@@ -143,44 +144,43 @@ const createOrder = asyncHandler(async (req, res) => {
     }
 });
 
-const getUserOrders = asyncHandler(async (req, res) => {
-    //  current user ke sab orders fetch
-    //  My Orders page
-    const activeOrders = await Order.find({
-        user: req.user._id,
-        orderStatus: {
-            $nin: ["cancelled", "delivered"]
-        }
-    }).populate("user", "username fullName email")
-        .populate("items.product", "title price images")
-        .sort({
-            createdAt: -1
-        })
-
-    validateOrdersNotFound(NotFoundOrders)
-
-    const cancelledOrders = await Order.find({
-        user: req.user._id,
-        orderStatus: "cancelled"
-    }).populate("user", "username fullName email")
-        .populate("items.product", "title price images");
+// const getUserOrders = asyncHandler(async (req, res) => {
+  
+//     const activeOrders = await Order.find({
+//         user: req.user._id,
+//         orderStatus: {
+//             $nin: ["cancelled", "delivered"]
+//         }
+//     }).populate("user", "username fullName email")
+//         .populate("items.product", "title price images")
+//         .sort({
+//             createdAt: -1
+//         })
 
 
-    const orderHistory = await Order.find({
-        user: req.user._id,
-        orderStatus: {
-            $in: ["delivered", "cancelled"]
-        }
-    }).populate("user", "username fullName email")
-        .populate("items.product", "title price images");
+//     validateOrdersNotFound(activeOrders)
+//     const cancelledOrders = await Order.find({
+//         user: req.user._id,
+//         orderStatus: "cancelled"
+//     }).populate("user", "username fullName email")
+//         .populate("items.product", "title price images");
 
 
-    return res.status(200).json(new apiResponse(200, {
-        cancelledOrders,
-        activeOrders,
-        orderHistory
-    }, 'orders fetched successfully'))
-})
+//     const orderHistory = await Order.find({
+//         user: req.user._id,
+//         orderStatus: {
+//             $in: ["delivered", "cancelled"]
+//         }
+//     }).populate("user", "username fullName email")
+//         .populate("items.product", "title price images");
+
+
+//     return res.status(200).json(new apiResponse(200, {
+//         cancelledOrders,
+//         activeOrders,
+//         orderHistory
+//     }, 'orders fetched successfully'))
+// })
 
 const getUserOrders1 = asyncHandler(async (req, res) => {
     // Active Orders
@@ -361,7 +361,81 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
     //  payment success/fail update
     //  payment gateway integration
 
+    const { paymentId } = req.params;
+    const { paymentStatus, transactionId } = req.body;
 
+    validateObjectId(paymentId, "payment id");
+
+    const allowedStatuses = [
+        "pending",
+        "paid",
+        "failed",
+        "refunded"
+    ];
+
+    if (!allowedStatuses.includes(paymentStatus)) {
+        throw new apiError(400, "Invalid payment status");
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        const payment = await Payment.findById(paymentId)
+            .session(session);
+
+        validatePaymentExists(payment)
+
+        // already finalized
+        if (
+            payment.paymentStatus === "paid" &&
+            paymentStatus === "paid"
+        ) {
+            throw new apiError(400, "Payment already marked as paid");
+        }
+
+        payment.paymentStatus = paymentStatus;
+
+        if (transactionId) {
+            payment.transactionId = transactionId;
+        }
+
+        if (paymentStatus === "paid") {
+            payment.paidAt = new Date();
+        }
+
+        if (paymentStatus === "failed") {
+            payment.failedAt = new Date();
+        }
+
+        await payment.save({ session });
+
+        // sync order payment status
+        const order = await Order.findById(payment.order)
+            .session(session);
+
+        validateOrderExists(order);
+
+        order.paymentStatus = paymentStatus;
+
+        await order.save({ session });
+
+        await session.commitTransaction();
+
+        return res.status(200).json(
+            new apiResponse(
+                200, {
+                payment,
+                order
+            }, "Payment status updated successfully")
+        );
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        await session.endSession();
+    }
 })
 
 
@@ -479,7 +553,7 @@ const getAllMyOrders = asyncHandler(async (req, res) => {
 })
 
 const deleteOrder = asyncHandler(async (req, res) => {
-
+    const { orderId } = req.params
     validateObjectId(orderId, 'order id')
 
     const order = await Order.findOne({
@@ -512,7 +586,7 @@ const deleteOrder = asyncHandler(async (req, res) => {
 
 export {
     createOrder,
-    getUserOrders,
+    // getUserOrders,
     getUserOrders1,
     getOrderById,
     cancelOrder,

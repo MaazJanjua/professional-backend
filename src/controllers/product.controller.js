@@ -7,13 +7,13 @@ import Product from '../models/product.models.js';
 import Review from '../models/reviews.models.js';
 
 import {
-    validateObjectId,
-    validateProductId
+    validateObjectId
+    
 } from '../utils/globalValidators.js'
 
 import {
     validateProductExists,
-    validateCreateProductData
+    validateCreateProductData 
 } from '../utils/productValidator.js'
 
 //update required product images  

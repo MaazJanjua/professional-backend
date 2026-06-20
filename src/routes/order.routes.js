@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import {
     createOrder,
-    getUserOrders,
+    // getUserOrders,
     getUserOrders1,
     getOrderById,
-    cancelOrder,
+    cancelOrder, 
     updateOrderStatus,
     updatePaymentStatus,
     getAllOrders,
     getAllMyOrders,
-    deleteOrder
+    deleteOrder 
 } from '../controllers/order.controller.js';
 
 import {
@@ -29,7 +29,7 @@ router.route('/')
 
 // User Orders
 router.route('/my-orders')
-    .get(viewLimiter, getUserOrders)
+    // .get(viewLimiter, getUserOrders)
     .get(viewLimiter, getUserOrders1)
     .get(viewLimiter, getAllMyOrders)
 

@@ -56,7 +56,7 @@ const adminActionLimiter = rateLimit({
 });
 
 //order ActionLimiter
-export const orderActionLimiter = rateLimit({
+const orderActionLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 20,
     message: "Too many order actions"
@@ -74,7 +74,7 @@ export {
     loginLimiter,
     commentLimiter,
     cartLimiter,
-    orderLimiter,
+    orderLimiter, 
     paymentLimiter,
     paymentVerifyLimiter,
     adminActionLimiter,
