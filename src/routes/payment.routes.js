@@ -12,30 +12,36 @@ import {
     refundPayment
 
 } from "../controllers/payment.controller.js";
-import verifyJWT from '../middlewares/auth.middleware.js'
 
+import {
+    viewLimiter,
+    paymentLimiter,
+    paymentVerifyLimiter,
+    financialActionLimiter
+} from '../middlewares/rateLimiter.middleware.js'
+
+
+import verifyJWT from '../middlewares/auth.middleware.js'
 const router = Router();
+
+router.route('/webhook').post(paymentWebhook);
+
 router.use(verifyJWT);
 
 router.route('/')
-    .post(createPayment)
-    .get(getUserPayments);
+    .post(paymentLimiter, createPayment)
+    .get(viewLimiter, getUserPayments);
+
+router.route('/verify').post(paymentVerifyLimiter, verifyPayment);
+
+router.route('/confirm-cod').post(financialActionLimiter, confirmCODPayment);
+
+router.route('/:orderId/refund').post(financialActionLimiter, refundPayment);
+
+router.route('/order/:orderId').get(viewLimiter, getPaymentByOrderId);
 
 router.route('/:paymentId')
-    .get(getpaymentById)
-    .patch(updatePaymentStatus);
-
-router.route('/verify')
-    .post(verifyPayment)
-    .post(paymentWebhook);
-
-router.route('/confirm-cod')
-    .post(confirmCODPayment);
-
-router.route('/:orderId/refund')
-    .post(refundPayment);
-
-router.route('/order/:orderId')
-    .get(getPaymentByOrderId);
+    .get(viewLimiter, getpaymentById)
+    .patch(financialActionLimiter, updatePaymentStatus);
 
 export default router;

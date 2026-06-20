@@ -9,37 +9,48 @@ import {
     updatePaymentStatus,
     getAllOrders,
     getAllMyOrders,
-    deleteOrder 
+    deleteOrder
 } from '../controllers/order.controller.js';
 
-import  verifyJWT  from '../middlewares/auth.middleware.js';
+import {
+    viewLimiter,
+    orderLimiter,
+    orderActionLimiter
+} from '../middlewares/rateLimiter.middleware.js'
+
+import verifyJWT from '../middlewares/auth.middleware.js';
 const router = Router();
 router.use(verifyJWT);//apply veriftJWT middleware to all routes in this file
 
+// Create Order + All Orders
 router.route('/')
-    .post(createOrder)
-    .get(getAllOrders);
+    .post(orderLimiter, createOrder)
+    .get(viewLimiter, getAllOrders);
 
+// User Orders
 router.route('/my-orders')
-    .get(getUserOrders)
-    .get(getUserOrders1)
-    .get(getAllMyOrders)
+    .get(viewLimiter, getUserOrders)
+    .get(viewLimiter, getUserOrders1)
+    .get(viewLimiter, getAllMyOrders)
 
 router.route('/my-orders1')
-    .get(getUserOrders1)
+    .get(viewLimiter, getUserOrders1)
 
-
+// Specific Order
 router.route('/:orderId')
-    .get(getOrderById)
-    .delete(deleteOrder);
+    .get(viewLimiter, getOrderById)
+    .delete(orderActionLimiter, deleteOrder);
 
+// Cancel Order
 router.route('/:orderId/cancel')
-    .patch(cancelOrder);
+    .patch(orderActionLimiter, cancelOrder);
 
+// Update Order Status (Admin)
 router.route('/:orderId/status')
-    .patch(updateOrderStatus);
+    .patch(orderActionLimiter, updateOrderStatus);
 
+// Update Payment Status (Admin)
 router.route('/:orderId/payment-status')
-    .patch(updatePaymentStatus);
+    .patch(orderActionLimiter, updatePaymentStatus);
 
 export default router;

@@ -8,23 +8,30 @@ import {
     updateCartItemQuantity,
 } from "../controllers/cart.controller.js";
 
+//RATE LIMIT IMPORT
+import {
+    viewLimiter,
+    cartLimiter
+} from "../middlewares/rateLimiter.middleware.js";
+
+
 import verifyJWT from '../middlewares/auth.middleware.js'
 const router = Router();
 
 router.use(verifyJWT);
 
 router.route('/')
-    .get(getCart)
-    .delete(clearCart)
+    .get(viewLimiter, getCart)
+    .delete(cartLimiter, clearCart)
 
 
 
 router.route('/sync')
-    .post(syncCart)
+    .post(cartLimiter, syncCart)
 
 router.route('/:productId')
-    .delete(removeFromCart)
-    .patch(updateCartItemQuantity)
-    .post(addToCart)
+    .delete(cartLimiter, removeFromCart)
+    .patch(cartLimiter, updateCartItemQuantity)
+    .post(cartLimiter, addToCart)
 
 export default router;
