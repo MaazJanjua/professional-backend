@@ -23,6 +23,7 @@ import cartRouter from './routes/cart.routes.js'
 import orderRouter from './routes/order.routes.js'
 import paymentRoute from './routes/payment.routes.js'
 import categoryRoute from './routes/category.routes.js'
+import wishlistRoute from './routes/wishlist.routes.js'
 
 // routes setup
 app.use('/api/v1/users', userRouter)
@@ -31,6 +32,7 @@ app.use('/api/v1/cart', cartRouter)
 app.use("/api/v1/order", orderRouter)
 app.use("/api/v1/payment", paymentRoute)
 app.use('/api/v1/category', categoryRoute)
+app.use('/api/v1/wishlist', wishlistRoute)
 
 
 app.get('/', (req, res) => {
